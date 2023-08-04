@@ -24,7 +24,6 @@ export default class StaticElementsLayout extends React.PureComponent {
         className="layout"
         onLayoutChange={this.onLayoutChange}
         rowHeight={30}
-        draggableHandle=".react-grid-dragHandleExample"
       >
         <div key="1" data-grid={{ x: 0, y: 0, w: 2, h: 3 }}>
           <span className="text">1</span>
@@ -41,7 +40,8 @@ export default class StaticElementsLayout extends React.PureComponent {
             x: 8,
             y: 0,
             w: 4,
-            h: 3
+            h: 3,
+            draggableHandle: ".react-grid-dragHandleExample"
           }}
         >
           <span className="text">
