@@ -5,7 +5,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 var React = _interopRequireWildcard(require("react"));
-var _fastEquals = require("fast-equals");
+var _lodash = _interopRequireDefault(require("lodash.isequal"));
 var _clsx = _interopRequireDefault(require("clsx"));
 var _utils = require("./utils");
 var _calculateUtils = require("./calculateUtils");
@@ -160,10 +160,10 @@ var ReactGridLayout = /*#__PURE__*/function (_React$Component) {
       // Move the element here
       var isUserAction = true;
       layout = (0, _utils.moveElement)(layout, l, x, y, isUserAction, preventCollision, (0, _utils.compactType)(_this.props), cols, allowOverlap);
+      _this.props.onDragStop(layout, oldDragItem, l, null, e, node);
 
       // Set state
       var newLayout = allowOverlap ? layout : (0, _utils.compact)(layout, (0, _utils.compactType)(_this.props), cols);
-      _this.props.onDragStop(newLayout, oldDragItem, l, null, e, node);
       var oldLayout = _this.state.oldLayout;
       _this.setState({
         activeDrag: null,
@@ -262,10 +262,10 @@ var ReactGridLayout = /*#__PURE__*/function (_React$Component) {
         cols = _this$props4.cols,
         allowOverlap = _this$props4.allowOverlap;
       var l = (0, _utils.getLayoutItem)(layout, i);
+      _this.props.onResizeStop(layout, oldResizeItem, l, null, e, node);
 
       // Set state
       var newLayout = allowOverlap ? layout : (0, _utils.compact)(layout, (0, _utils.compactType)(_this.props), cols);
-      _this.props.onResizeStop(newLayout, oldResizeItem, l, null, e, node);
       var oldLayout = _this.state.oldLayout;
       _this.setState({
         activeDrag: null,
@@ -361,7 +361,7 @@ var ReactGridLayout = /*#__PURE__*/function (_React$Component) {
       var layout = _this.state.layout;
       var newLayout = (0, _utils.compact)(layout.filter(function (l) {
         return l.i !== droppingItem.i;
-      }), (0, _utils.compactType)(_this.props), cols, _this.props.allowOverlap);
+      }), (0, _utils.compactType)(_this.props), cols);
       _this.setState({
         layout: newLayout,
         droppingDOMNode: null,
@@ -421,7 +421,7 @@ var ReactGridLayout = /*#__PURE__*/function (_React$Component) {
         // NOTE: this is almost always unequal. Therefore the only way to get better performance
         // from SCU is if the user intentionally memoizes children. If they do, and they can
         // handle changes properly, performance will increase.
-        this.props.children !== nextProps.children || !(0, _utils.fastRGLPropsEqual)(this.props, nextProps, _fastEquals.deepEqual) || this.state.activeDrag !== nextState.activeDrag || this.state.mounted !== nextState.mounted || this.state.droppingPosition !== nextState.droppingPosition
+        this.props.children !== nextProps.children || !(0, _utils.fastRGLPropsEqual)(this.props, nextProps, _lodash.default) || this.state.activeDrag !== nextState.activeDrag || this.state.mounted !== nextState.mounted || this.state.droppingPosition !== nextState.droppingPosition
       );
     }
   }, {
@@ -450,7 +450,7 @@ var ReactGridLayout = /*#__PURE__*/function (_React$Component) {
     key: "onLayoutMaybeChanged",
     value: function onLayoutMaybeChanged(newLayout /*: Layout*/, oldLayout /*: ?Layout*/) {
       if (!oldLayout) oldLayout = this.state.layout;
-      if (!(0, _fastEquals.deepEqual)(oldLayout, newLayout)) {
+      if (!(0, _lodash.default)(oldLayout, newLayout)) {
         this.props.onLayoutChange(newLayout);
       }
     }
@@ -515,6 +515,7 @@ var ReactGridLayout = /*#__PURE__*/function (_React$Component) {
         rowHeight = _this$props8.rowHeight,
         maxRows = _this$props8.maxRows,
         isDraggable = _this$props8.isDraggable,
+        dragTouchDelayDuration = _this$props8.dragTouchDelayDuration,
         isResizable = _this$props8.isResizable,
         isBounded = _this$props8.isBounded,
         useCSSTransforms = _this$props8.useCSSTransforms,
@@ -552,6 +553,7 @@ var ReactGridLayout = /*#__PURE__*/function (_React$Component) {
         onResize: this.onResize,
         onResizeStop: this.onResizeStop,
         isDraggable: draggable,
+        dragTouchDelayDuration: dragTouchDelayDuration,
         isResizable: resizable,
         isBounded: bounded,
         useCSSTransforms: useCSSTransforms && mounted,
@@ -607,7 +609,7 @@ var ReactGridLayout = /*#__PURE__*/function (_React$Component) {
 
       // Legacy support for compactType
       // Allow parent to set layout directly.
-      if (!(0, _fastEquals.deepEqual)(nextProps.layout, prevState.propsLayout) || nextProps.compactType !== prevState.compactType) {
+      if (!(0, _lodash.default)(nextProps.layout, prevState.propsLayout) || nextProps.compactType !== prevState.compactType) {
         newLayoutBase = nextProps.layout;
       } else if (!(0, _utils.childrenEqual)(nextProps.children, prevState.children)) {
         // If children change, also regenerate the layout. Use our state
@@ -644,6 +646,9 @@ _defineProperty(ReactGridLayout, "defaultProps", {
   className: "",
   style: {},
   draggableHandle: "",
+  // TODO [>=2.0.0] Make this default duration 250ms
+  // By default, this is off. Set to ~250ms for touch devices
+  dragTouchDelayDuration: 0,
   draggableCancel: "",
   containerPadding: null,
   rowHeight: 150,

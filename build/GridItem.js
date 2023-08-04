@@ -43,18 +43,139 @@ var GridItem = /*#__PURE__*/function (_React$Component) {
     }
     _this = _super.call.apply(_super, [this].concat(args));
     _defineProperty(_assertThisInitialized(_this), "state", {
+      dragEnabled: false,
+      allowedToDrag: false,
       resizing: null,
       dragging: null,
       className: ""
     });
     _defineProperty(_assertThisInitialized(_this), "elementRef", /*#__PURE__*/_react.default.createRef());
+    // A reference to the DraggableCore component to access it directly.
+    _defineProperty(_assertThisInitialized(_this), "draggableCoreRef", /*#__PURE__*/_react.default.createRef());
+    _defineProperty(_assertThisInitialized(_this), "childEvents", []);
+    /**
+     * Add an event listener to the grid item.
+     * The event will also be added to childEvents array for future use.
+     * @param  {string} type  Type of event to add (eg: mousedown, touchstart, etc)
+     * @param  {(e: Event) => void} event  The event callback
+     * @param  {boolean} passive  Whether the event should be passive, defaults to false
+     */
+    _defineProperty(_assertThisInitialized(_this), "addChildEvent", function (type, event) {
+      var passive = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
+      if (_this.elementRef.current) {
+        _this.elementRef.current.addEventListener(type, event, {
+          passive: passive
+        });
+        _this.childEvents.push({
+          type: type,
+          event: event,
+          passive: passive
+        });
+      }
+    });
+    _defineProperty(_assertThisInitialized(_this), "removeChildEvents", function () {
+      if (_this.elementRef.current) {
+        _this.childEvents.forEach(function (_ref) {
+          var type = _ref.type,
+            event = _ref.event,
+            passive = _ref.passive;
+          _this.elementRef.current.removeEventListener(type, event, {
+            passive: passive
+          });
+        });
+        _this.childEvents = [];
+      }
+    });
+    // A reference to the timeout handler to be able to access it at any time.
+    _defineProperty(_assertThisInitialized(_this), "dragDelayTimeout", null);
+    /**
+     * onMouseDown event is tied to both 'mousedown' and 'touchstart' events in DraggableCore.
+     * We start the delayed drag process when the user presses the mouse button or the finger.
+     * @param  {Event} e  TouchStart/MouseDown event.
+     */
+    _defineProperty(_assertThisInitialized(_this), "onMouseDown", function (e) {
+      // handle touch events only
+      if (!_this.dragDelayTimeout && e instanceof TouchEvent) {
+        _this.startDragDelayTimeout(e);
+      }
+    });
+    /**
+     * Start the delayed counter to determine when a drag should start.
+     * @param  {Event} e          TouchStart/MouseDown event.
+     */
+    _defineProperty(_assertThisInitialized(_this), "startDragDelayTimeout", function (e) {
+      // Prevent text selection while dragging.
+      if (document.body.style.userSelect === "" || document.body.style.webkitUserSelect === "") {
+        document.body.style.webkitUserSelect = "none";
+        document.body.style.userSelect = "none";
+      }
+      if (!_this.state.allowedToDrag) {
+        /**
+         * Register events to cancel the timeout handler if user releases the mouse or touch
+         */
+        _this.addChildEvent("touchend", _this.resetDelayTimeout);
+        /**
+         * Prevent user from doing touch and scroll at the same time.
+         * If the user starts scrolling, we can not cancel the scroll event,
+         * so we cancel the drag event instead.
+         */
+        _this.addChildEvent("touchmove", _this.handleTouchMove, false);
+
+        // Start the timeout and assign its handler to the dragDelayTimeout
+        _this.dragDelayTimeout = setTimeout(function () {
+          _this.dragDelayTimeout = null;
+          // vibrate api is not available on safari, so we need to check it
+          if (navigator.vibrate && !_this.props.static) {
+            // vibrate device for 80ms
+            navigator.vibrate(80);
+          }
+          _this.setState({
+            allowedToDrag: true
+          });
+          // Start the drag process by calling the DraggableCore handleDragStartFunction directly.
+          _this.draggableCoreRef.current.handleDragStart(e);
+        }, _this.props.dragTouchDelayDuration);
+      }
+    });
+    /**
+     * Prevent user from doing touch and scroll at the same time.
+     * If the user starts scrolling, we can not cancel the scroll event,
+     * so we cancel the drag event instead.
+     *
+     * if the user is currently dragging, and the timeout has not been canceled,
+     * we prevent the future scroll events by calling preventDefault.
+     *
+     * @param  {Event} e  TouchMove/Scroll event.
+     */
+    _defineProperty(_assertThisInitialized(_this), "handleTouchMove", function (e /*: Event*/) {
+      if (_this.state.allowedToDrag) {
+        e.preventDefault();
+      } else {
+        _this.resetDelayTimeout();
+      }
+    });
+    /**
+     * Reset the drag timer and clear all events and values.
+     */
+    _defineProperty(_assertThisInitialized(_this), "resetDelayTimeout", function () {
+      clearTimeout(_this.dragDelayTimeout);
+      _this.dragDelayTimeout = null;
+      _this.setState({
+        allowedToDrag: false
+      });
+      _this.removeChildEvents();
+      if (document.body.style.userSelect === "none" || document.body.style.webkitUserSelect === "none") {
+        document.body.style.webkitUserSelect = "";
+        document.body.style.userSelect = "";
+      }
+    });
     /**
      * onDragStart event handler
      * @param  {Event}  e             event data
      * @param  {Object} callbackData  an object with node, delta and position information
      */
-    _defineProperty(_assertThisInitialized(_this), "onDragStart", function (e, _ref) {
-      var node = _ref.node;
+    _defineProperty(_assertThisInitialized(_this), "onDragStart", function (e, _ref2) {
+      var node = _ref2.node;
       var _this$props = _this.props,
         onDragStart = _this$props.onDragStart,
         transformScale = _this$props.transformScale;
@@ -94,10 +215,10 @@ var GridItem = /*#__PURE__*/function (_React$Component) {
      * @param  {Event}  e             event data
      * @param  {Object} callbackData  an object with node, delta and position information
      */
-    _defineProperty(_assertThisInitialized(_this), "onDrag", function (e, _ref2) {
-      var node = _ref2.node,
-        deltaX = _ref2.deltaX,
-        deltaY = _ref2.deltaY;
+    _defineProperty(_assertThisInitialized(_this), "onDrag", function (e, _ref3) {
+      var node = _ref3.node,
+        deltaX = _ref3.deltaX,
+        deltaY = _ref3.deltaY;
       var onDrag = _this.props.onDrag;
       if (!onDrag) return;
       if (!_this.state.dragging) {
@@ -150,8 +271,9 @@ var GridItem = /*#__PURE__*/function (_React$Component) {
      * @param  {Event}  e             event data
      * @param  {Object} callbackData  an object with node, delta and position information
      */
-    _defineProperty(_assertThisInitialized(_this), "onDragStop", function (e, _ref3) {
-      var node = _ref3.node;
+    _defineProperty(_assertThisInitialized(_this), "onDragStop", function (e, _ref4) {
+      var node = _ref4.node;
+      _this.resetDelayTimeout();
       var onDragStop = _this.props.onDragStop;
       if (!onDragStop) return;
       if (!_this.state.dragging) {
@@ -213,6 +335,7 @@ var GridItem = /*#__PURE__*/function (_React$Component) {
       // use this optimization.
       if (this.props.children !== nextProps.children) return true;
       if (this.props.droppingPosition !== nextProps.droppingPosition) return true;
+      if (this.state.allowedToDrag !== nextState.allowedToDrag) return true;
       // TODO memoize these calculations so they don't take so long?
       var oldPosition = (0, _calculateUtils.calcGridItemPosition)(this.getPositionParams(this.props), this.props.x, this.props.y, this.props.w, this.props.h, this.state);
       var newPosition = (0, _calculateUtils.calcGridItemPosition)(this.getPositionParams(nextProps), nextProps.x, nextProps.y, nextProps.w, nextProps.h, nextState);
@@ -289,16 +412,18 @@ var GridItem = /*#__PURE__*/function (_React$Component) {
     key: "createStyle",
     value: function createStyle(pos /*: Position*/) /*: { [key: string]: ?string }*/{
       var _this$props5 = this.props,
+        isStatic = _this$props5.static,
         usePercentages = _this$props5.usePercentages,
         containerWidth = _this$props5.containerWidth,
         useCSSTransforms = _this$props5.useCSSTransforms;
+      var scale = !isStatic && this.state.allowedToDrag ? 1.1 : 1;
       var style;
       // CSS Transforms support (default)
       if (useCSSTransforms) {
-        style = (0, _utils.setTransform)(pos);
+        style = (0, _utils.setTransform)(pos, scale);
       } else {
         // top,left (slow)
-        style = (0, _utils.setTopLeft)(pos);
+        style = (0, _utils.setTopLeft)(pos, scale);
 
         // This is used for server rendering.
         if (usePercentages) {
@@ -309,23 +434,36 @@ var GridItem = /*#__PURE__*/function (_React$Component) {
       return style;
     }
 
+    // Check if device is touch-capable.
+  }, {
+    key: "isTouchCapable",
+    value: function isTouchCapable() /*: boolean*/{
+      return "ontouchstart" in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
+    }
+  }, {
+    key: "mixinDraggable",
+    value:
     /**
      * Mix a Draggable instance into a child.
      * @param  {Element} child    Child element.
      * @return {Element}          Child wrapped in Draggable.
      */
-  }, {
-    key: "mixinDraggable",
-    value: function mixinDraggable(child /*: ReactElement<any>*/, isDraggable /*: boolean*/) /*: ReactElement<any>*/{
+    function mixinDraggable(child /*: ReactElement<any>*/, isDraggable /*: boolean*/) /*: ReactElement<any>*/{
+      var delayedDragEnabled /*: boolean*/ = this.props.dragTouchDelayDuration && this.isTouchCapable();
+
+      // Delayed touch works by changing disabling DraggableCore for a short while.
+      var delayedDragNeedsWait = delayedDragEnabled && !this.state.allowedToDrag;
       return /*#__PURE__*/_react.default.createElement(_reactDraggable.DraggableCore, {
-        disabled: !isDraggable,
+        disabled: !isDraggable || delayedDragNeedsWait,
         onStart: this.onDragStart,
+        onMouseDown: delayedDragEnabled ? this.onMouseDown : undefined,
         onDrag: this.onDrag,
         onStop: this.onDragStop,
         handle: this.props.handle,
         cancel: ".react-resizable-handle" + (this.props.cancel ? "," + this.props.cancel : ""),
         scale: this.props.transformScale,
-        nodeRef: this.elementRef
+        nodeRef: this.elementRef,
+        ref: this.draggableCoreRef
       }, child);
     }
 
@@ -388,9 +526,9 @@ var GridItem = /*#__PURE__*/function (_React$Component) {
      * @param  {String} handlerName Handler name to wrap.
      * @return {Function}           Handler function.
      */
-    function onResizeHandler(e /*: Event*/, _ref4 /*:: */, handlerName /*: string*/) /*: void*/{
-      var node = _ref4 /*:: */.node,
-        size = _ref4 /*:: */.size;
+    function onResizeHandler(e /*: Event*/, _ref5 /*:: */, handlerName /*: string*/) /*: void*/{
+      var node = _ref5 /*:: */.node,
+        size = _ref5 /*:: */.size;
       var handler = this.props[handlerName];
       if (!handler) return;
       var _this$props7 = this.props,
@@ -518,6 +656,7 @@ _defineProperty(GridItem, "propTypes", {
   onResize: _propTypes.default.func,
   // Flags
   isDraggable: _propTypes.default.bool.isRequired,
+  dragTouchDelayDuration: _propTypes.default.number,
   isResizable: _propTypes.default.bool.isRequired,
   isBounded: _propTypes.default.bool.isRequired,
   static: _propTypes.default.bool,
@@ -540,6 +679,7 @@ _defineProperty(GridItem, "propTypes", {
 _defineProperty(GridItem, "defaultProps", {
   className: "",
   cancel: "",
+  dragTouchDelayDuration: 0,
   handle: "",
   minH: 1,
   minW: 1,

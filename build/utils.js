@@ -31,7 +31,7 @@ exports.sortLayoutItemsByRowCol = sortLayoutItemsByRowCol;
 exports.synchronizeLayoutWithChildren = synchronizeLayoutWithChildren;
 exports.validateLayout = validateLayout;
 exports.withLayoutItem = withLayoutItem;
-var _fastEquals = require("fast-equals");
+var _lodash = _interopRequireDefault(require("lodash.isequal"));
 var _react = _interopRequireDefault(require("react"));
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
@@ -118,14 +118,10 @@ function cloneLayoutItem(layoutItem /*: LayoutItem*/) /*: LayoutItem*/{
  * This will catch differences in keys, order, and length.
  */
 function childrenEqual(a /*: ReactChildren*/, b /*: ReactChildren*/) /*: boolean*/{
-  return (0, _fastEquals.deepEqual)(_react.default.Children.map(a, function (c) {
+  return (0, _lodash.default)(_react.default.Children.map(a, function (c) {
     return c === null || c === void 0 ? void 0 : c.key;
   }), _react.default.Children.map(b, function (c) {
     return c === null || c === void 0 ? void 0 : c.key;
-  })) && (0, _fastEquals.deepEqual)(_react.default.Children.map(a, function (c) {
-    return c === null || c === void 0 ? void 0 : c.props["data-grid"];
-  }), _react.default.Children.map(b, function (c) {
-    return c === null || c === void 0 ? void 0 : c.props["data-grid"];
   }));
 }
 
@@ -167,10 +163,9 @@ function collides(l1 /*: LayoutItem*/, l2 /*: LayoutItem*/) /*: boolean*/{
  * @param  {Array} layout Layout.
  * @param  {Boolean} verticalCompact Whether or not to compact the layout
  *   vertically.
- * @param  {Boolean} allowOverlap When `true`, allows overlapping grid items.
  * @return {Array}       Compacted Layout.
  */
-function compact(layout /*: Layout*/, compactType /*: CompactType*/, cols /*: number*/, allowOverlap /*: ?boolean*/) /*: Layout*/{
+function compact(layout /*: Layout*/, compactType /*: CompactType*/, cols /*: number*/) /*: Layout*/{
   // Statics go in the compareWith array right away so items flow around them.
   var compareWith = getStatics(layout);
   // We go through the items by row and column.
@@ -182,7 +177,7 @@ function compact(layout /*: Layout*/, compactType /*: CompactType*/, cols /*: nu
 
     // Don't move static elements
     if (!l.static) {
-      l = compactItem(compareWith, l, compactType, cols, sorted, allowOverlap);
+      l = compactItem(compareWith, l, compactType, cols, sorted);
 
       // Add to comparison array. We only collide with items before this one.
       // Statics are already in this array.
@@ -233,7 +228,7 @@ function resolveCompactionCollision(layout /*: Layout*/, item /*: LayoutItem*/, 
  * Modifies item.
  *
  */
-function compactItem(compareWith /*: Layout*/, l /*: LayoutItem*/, compactType /*: CompactType*/, cols /*: number*/, fullLayout /*: Layout*/, allowOverlap /*: ?boolean*/) /*: LayoutItem*/{
+function compactItem(compareWith /*: Layout*/, l /*: LayoutItem*/, compactType /*: CompactType*/, cols /*: number*/, fullLayout /*: Layout*/) /*: LayoutItem*/{
   var compactV = compactType === "vertical";
   var compactH = compactType === "horizontal";
   if (compactV) {
@@ -254,8 +249,7 @@ function compactItem(compareWith /*: Layout*/, l /*: LayoutItem*/, compactType /
 
   // Move it down, and keep moving it down if it's colliding.
   var collides;
-  // Checking the compactType null value to avoid breaking the layout when overlapping is allowed.
-  while ((collides = getFirstCollision(compareWith, l)) && !(compactType === null && allowOverlap)) {
+  while (collides = getFirstCollision(compareWith, l)) {
     if (compactH) {
       resolveCompactionCollision(fullLayout, l, collides.x + collides.w, "x");
     } else {
@@ -265,10 +259,6 @@ function compactItem(compareWith /*: Layout*/, l /*: LayoutItem*/, compactType /
     if (compactH && l.x + l.w > cols) {
       l.x = cols - l.w;
       l.y++;
-      // ALso move element as left as we can
-      while (l.x > 0 && !getFirstCollision(compareWith, l)) {
-        l.x--;
-      }
     }
   }
 
@@ -476,14 +466,15 @@ function setTransform(_ref /*:: */) /*: Object*/{
     left = _ref /*:: */.left,
     width = _ref /*:: */.width,
     height = _ref /*:: */.height;
+  var scale /*: number*/ = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
   // Replace unitless items with px
-  var translate = "translate(".concat(left, "px,").concat(top, "px)");
+  var transform = "translate(".concat(left, "px,").concat(top, "px) scale(").concat(scale, ")");
   return {
-    transform: translate,
-    WebkitTransform: translate,
-    MozTransform: translate,
-    msTransform: translate,
-    OTransform: translate,
+    transform: transform,
+    WebkitTransform: transform,
+    MozTransform: transform,
+    msTransform: transform,
+    OTransform: transform,
     width: "".concat(width, "px"),
     height: "".concat(height, "px"),
     position: "absolute"
@@ -494,7 +485,14 @@ function setTopLeft(_ref2 /*:: */) /*: Object*/{
     left = _ref2 /*:: */.left,
     width = _ref2 /*:: */.width,
     height = _ref2 /*:: */.height;
+  var scale /*: number*/ = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
+  var transform = "scale(".concat(scale, ")");
   return {
+    transform: transform,
+    WebkitTransform: transform,
+    MozTransform: transform,
+    msTransform: transform,
+    OTransform: transform,
     top: "".concat(top, "px"),
     left: "".concat(left, "px"),
     width: "".concat(width, "px"),
@@ -565,13 +563,17 @@ function synchronizeLayoutWithChildren(initialLayout /*: Layout*/, children /*: 
   _react.default.Children.forEach(children, function (child /*: ReactElement<any>*/) {
     // Child may not exist
     if ((child === null || child === void 0 ? void 0 : child.key) == null) return;
+
+    // Don't overwrite if it already exists.
     var exists = getLayoutItem(initialLayout, String(child.key));
-    var g = child.props["data-grid"];
-    // Don't overwrite the layout item if it's already in the initial layout.
-    // If it has a `data-grid` property, prefer that over what's in the layout.
-    if (exists && g == null) {
+    if (exists) {
       layout.push(cloneLayoutItem(exists));
     } else {
+      if (!isProduction && child.props._grid) {
+        console.warn("`_grid` properties on children have been deprecated as of React 15.2. " + "Please use `data-grid` or add your properties directly to the `layout`.");
+      }
+      var g = child.props["data-grid"] || child.props._grid;
+
       // Hey, this item has a data-grid property, use it.
       if (g) {
         if (!isProduction) {

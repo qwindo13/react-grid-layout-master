@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", {
 exports.default = void 0;
 var React = _interopRequireWildcard(require("react"));
 var _propTypes = _interopRequireDefault(require("prop-types"));
-var _fastEquals = require("fast-equals");
+var _lodash = _interopRequireDefault(require("lodash.isequal"));
 var _utils = require("./utils");
 var _responsiveUtils = require("./responsiveUtils");
 var _ReactGridLayout = _interopRequireDefault(require("./ReactGridLayout"));
@@ -136,7 +136,7 @@ var ResponsiveReactGridLayout = /*#__PURE__*/function (_React$Component) {
     key: "componentDidUpdate",
     value: function componentDidUpdate(prevProps /*: Props<*>*/) {
       // Allow parent to set width or breakpoint directly.
-      if (this.props.width != prevProps.width || this.props.breakpoint !== prevProps.breakpoint || !(0, _fastEquals.deepEqual)(this.props.breakpoints, prevProps.breakpoints) || !(0, _fastEquals.deepEqual)(this.props.cols, prevProps.cols)) {
+      if (this.props.width != prevProps.width || this.props.breakpoint !== prevProps.breakpoint || !(0, _lodash.default)(this.props.breakpoints, prevProps.breakpoints) || !(0, _lodash.default)(this.props.cols, prevProps.cols)) {
         this.onWidthChange(prevProps);
       }
     }
@@ -216,7 +216,7 @@ var ResponsiveReactGridLayout = /*#__PURE__*/function (_React$Component) {
   }], [{
     key: "getDerivedStateFromProps",
     value: function getDerivedStateFromProps(nextProps /*: Props<*>*/, prevState /*: State*/) /*: ?$Shape<State>*/{
-      if (!(0, _fastEquals.deepEqual)(nextProps.layouts, prevState.layouts)) {
+      if (!(0, _lodash.default)(nextProps.layouts, prevState.layouts)) {
         // Allow parent to set layouts directly.
         var breakpoint = prevState.breakpoint,
           _cols = prevState.cols;

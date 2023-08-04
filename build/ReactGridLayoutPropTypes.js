@@ -27,6 +27,7 @@ var resizeHandleType /*: ReactPropsChainableTypeChecker*/ = _propTypes.default.o
   width: number,
   autoSize: boolean,
   cols: number,
+  dragTouchDelayDuration: number,
   draggableCancel: string,
   draggableHandle: string,
   verticalCompact: boolean,
@@ -83,6 +84,10 @@ var _default = {
   autoSize: _propTypes.default.bool,
   // # of cols.
   cols: _propTypes.default.number,
+  // If set, items will be draggable only after the specified delay.
+  // This feature is only enabled on touch devices.
+  // This can be helpful if you want to be able to scroll on touch devices easily.
+  dragTouchDelayDuration: _propTypes.default.number,
   // A selector that will not be draggable.
   draggableCancel: _propTypes.default.string,
   // A selector for the draggable handler
