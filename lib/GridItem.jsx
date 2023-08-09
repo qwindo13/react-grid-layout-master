@@ -500,7 +500,7 @@ export default class GridItem extends React.Component<Props, State> {
   onMouseDown: Event => void = e => {
     // handle touch events only
     e.preventDefault();
-    if (!this.dragDelayTimeout) {
+    if (!this.dragDelayTimeout && !this.state.allowedToDrag) {
       this.startDragDelayTimeout(e);
     }
   };
@@ -548,9 +548,11 @@ export default class GridItem extends React.Component<Props, State> {
           // vibrate device for 80ms
           navigator.vibrate(80);
         }
-        this.setState({ allowedToDrag: true });
+        this.setState({ allowedToDrag: true }, () => {
+          this.draggableCoreRef.current.handleDragStart(e);
+
+        });
         // Start the drag process by calling the DraggableCore handleDragStartFunction directly.
-        this.draggableCoreRef.current.handleDragStart(e);
       }, this.props.dragTouchDelayDuration);
     }
   };
@@ -609,6 +611,7 @@ export default class GridItem extends React.Component<Props, State> {
    * @param  {Object} callbackData  an object with node, delta and position information
    */
   onDragStart: (Event, ReactDraggableCallbackData) => void = (e, { node }) => {
+    if (!this.state.allowedToDrag) return
     const { onDragStart, transformScale } = this.props;
     if (!onDragStart) return;
 
