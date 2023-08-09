@@ -374,7 +374,7 @@ export default class GridItem extends React.Component<Props, State> {
       <DraggableCore
         disabled={!isDraggable || delayedDragNeedsWait}
         onStart={this.onDragStart}
-        onMouseDown={this.onMouseDown}
+        onMouseDown={delayedDragEnabled ? this.onMouseDown : undefined}
         onDrag={this.onDrag}
         onStop={this.onDragStop}
         handle={this.props.handle}
@@ -499,8 +499,7 @@ export default class GridItem extends React.Component<Props, State> {
    */
   onMouseDown: Event => void = e => {
     // handle touch events only
-    e.preventDefault();
-    if (!this.dragDelayTimeout && !this.state.allowedToDrag) {
+    if (!this.dragDelayTimeout && e instanceof TouchEvent) {
       this.startDragDelayTimeout(e);
     }
   };
@@ -519,26 +518,17 @@ export default class GridItem extends React.Component<Props, State> {
       document.body.style.userSelect = "none";
     }
 
-    if (this.draggableCoreRef.current) {
-      this.draggableCoreRef.current.originalHandleDragStart = this.draggableCoreRef.current.handleDragStart;
-      this.draggableCoreRef.current.handleDragStart = (e) => {};
-    }
-
     if (!this.state.allowedToDrag) {
       /**
        * Register events to cancel the timeout handler if user releases the mouse or touch
        */
       this.addChildEvent("touchend", this.resetDelayTimeout);
-      this.addChildEvent("mouseup", this.resetDelayTimeout);
-      this.addChildEvent("mousemove", this.handleMouseMove, false);
       /**
        * Prevent user from doing touch and scroll at the same time.
        * If the user starts scrolling, we can not cancel the scroll event,
        * so we cancel the drag event instead.
        */
       this.addChildEvent("touchmove", this.handleTouchMove, false);
-      this.addChildEvent("mousemove", this.handleTouchMove, false);
-
 
       // Start the timeout and assign its handler to the dragDelayTimeout
       this.dragDelayTimeout = setTimeout(() => {
@@ -548,11 +538,9 @@ export default class GridItem extends React.Component<Props, State> {
           // vibrate device for 80ms
           navigator.vibrate(80);
         }
-        this.setState({ allowedToDrag: true }, () => {
-          this.draggableCoreRef.current.handleDragStart(e);
-
-        });
+        this.setState({ allowedToDrag: true });
         // Start the drag process by calling the DraggableCore handleDragStartFunction directly.
+        this.draggableCoreRef.current.handleDragStart(e);
       }, this.props.dragTouchDelayDuration);
     }
   };
@@ -568,13 +556,6 @@ export default class GridItem extends React.Component<Props, State> {
    * @param  {Event} e  TouchMove/Scroll event.
    */
   handleTouchMove: Event => void = (e: Event) => {
-    if (this.state.allowedToDrag) {
-      e.preventDefault();
-    } else {
-      this.resetDelayTimeout();
-    }
-  };
-  handleMouseMove: Event => void = (e: Event) => {
     if (this.state.allowedToDrag) {
       e.preventDefault();
     } else {
@@ -599,10 +580,6 @@ export default class GridItem extends React.Component<Props, State> {
       document.body.style.webkitUserSelect = "";
       document.body.style.userSelect = "";
     }
-
-    if (this.draggableCoreRef.current) {
-      this.draggableCoreRef.current.handleDragStart = this.draggableCoreRef.current.originalHandleDragStart;
-    }
   };
 
   /**
@@ -611,7 +588,6 @@ export default class GridItem extends React.Component<Props, State> {
    * @param  {Object} callbackData  an object with node, delta and position information
    */
   onDragStart: (Event, ReactDraggableCallbackData) => void = (e, { node }) => {
-    if (!this.state.allowedToDrag) return
     const { onDragStart, transformScale } = this.props;
     if (!onDragStart) return;
 
