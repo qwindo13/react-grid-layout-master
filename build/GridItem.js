@@ -95,7 +95,8 @@ var GridItem = /*#__PURE__*/function (_React$Component) {
      */
     _defineProperty(_assertThisInitialized(_this), "onMouseDown", function (e) {
       // handle touch events only
-      if (!_this.dragDelayTimeout && e instanceof TouchEvent) {
+      e.preventDefault();
+      if (!_this.dragDelayTimeout) {
         _this.startDragDelayTimeout(e);
       }
     });
@@ -109,17 +110,24 @@ var GridItem = /*#__PURE__*/function (_React$Component) {
         document.body.style.webkitUserSelect = "none";
         document.body.style.userSelect = "none";
       }
+      if (_this.draggableCoreRef.current) {
+        _this.draggableCoreRef.current.originalHandleDragStart = _this.draggableCoreRef.current.handleDragStart;
+        _this.draggableCoreRef.current.handleDragStart = function (e) {};
+      }
       if (!_this.state.allowedToDrag) {
         /**
          * Register events to cancel the timeout handler if user releases the mouse or touch
          */
         _this.addChildEvent("touchend", _this.resetDelayTimeout);
+        _this.addChildEvent("mouseup", _this.resetDelayTimeout);
+        _this.addChildEvent("mousemove", _this.handleMouseMove, false);
         /**
          * Prevent user from doing touch and scroll at the same time.
          * If the user starts scrolling, we can not cancel the scroll event,
          * so we cancel the drag event instead.
          */
         _this.addChildEvent("touchmove", _this.handleTouchMove, false);
+        _this.addChildEvent("mousemove", _this.handleTouchMove, false);
 
         // Start the timeout and assign its handler to the dragDelayTimeout
         _this.dragDelayTimeout = setTimeout(function () {
@@ -154,6 +162,13 @@ var GridItem = /*#__PURE__*/function (_React$Component) {
         _this.resetDelayTimeout();
       }
     });
+    _defineProperty(_assertThisInitialized(_this), "handleMouseMove", function (e /*: Event*/) {
+      if (_this.state.allowedToDrag) {
+        e.preventDefault();
+      } else {
+        _this.resetDelayTimeout();
+      }
+    });
     /**
      * Reset the drag timer and clear all events and values.
      */
@@ -167,6 +182,9 @@ var GridItem = /*#__PURE__*/function (_React$Component) {
       if (document.body.style.userSelect === "none" || document.body.style.webkitUserSelect === "none") {
         document.body.style.webkitUserSelect = "";
         document.body.style.userSelect = "";
+      }
+      if (_this.draggableCoreRef.current) {
+        _this.draggableCoreRef.current.handleDragStart = _this.draggableCoreRef.current.originalHandleDragStart;
       }
     });
     /**
@@ -456,7 +474,7 @@ var GridItem = /*#__PURE__*/function (_React$Component) {
       return /*#__PURE__*/_react.default.createElement(_reactDraggable.DraggableCore, {
         disabled: !isDraggable || delayedDragNeedsWait,
         onStart: this.onDragStart,
-        onMouseDown: delayedDragEnabled ? this.onMouseDown : undefined,
+        onMouseDown: this.onMouseDown,
         onDrag: this.onDrag,
         onStop: this.onDragStop,
         handle: this.props.handle,

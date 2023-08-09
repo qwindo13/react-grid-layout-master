@@ -374,7 +374,7 @@ export default class GridItem extends React.Component<Props, State> {
       <DraggableCore
         disabled={!isDraggable || delayedDragNeedsWait}
         onStart={this.onDragStart}
-        onMouseDown={delayedDragEnabled ? this.onMouseDown : undefined}
+        onMouseDown={this.onMouseDown}
         onDrag={this.onDrag}
         onStop={this.onDragStop}
         handle={this.props.handle}
@@ -499,7 +499,8 @@ export default class GridItem extends React.Component<Props, State> {
    */
   onMouseDown: Event => void = e => {
     // handle touch events only
-    if (!this.dragDelayTimeout && e instanceof TouchEvent) {
+    e.preventDefault();
+    if (!this.dragDelayTimeout) {
       this.startDragDelayTimeout(e);
     }
   };
@@ -518,17 +519,26 @@ export default class GridItem extends React.Component<Props, State> {
       document.body.style.userSelect = "none";
     }
 
+    if (this.draggableCoreRef.current) {
+      this.draggableCoreRef.current.originalHandleDragStart = this.draggableCoreRef.current.handleDragStart;
+      this.draggableCoreRef.current.handleDragStart = (e) => {};
+    }
+
     if (!this.state.allowedToDrag) {
       /**
        * Register events to cancel the timeout handler if user releases the mouse or touch
        */
       this.addChildEvent("touchend", this.resetDelayTimeout);
+      this.addChildEvent("mouseup", this.resetDelayTimeout);
+      this.addChildEvent("mousemove", this.handleMouseMove, false);
       /**
        * Prevent user from doing touch and scroll at the same time.
        * If the user starts scrolling, we can not cancel the scroll event,
        * so we cancel the drag event instead.
        */
       this.addChildEvent("touchmove", this.handleTouchMove, false);
+      this.addChildEvent("mousemove", this.handleTouchMove, false);
+
 
       // Start the timeout and assign its handler to the dragDelayTimeout
       this.dragDelayTimeout = setTimeout(() => {
@@ -562,6 +572,13 @@ export default class GridItem extends React.Component<Props, State> {
       this.resetDelayTimeout();
     }
   };
+  handleMouseMove: Event => void = (e: Event) => {
+    if (this.state.allowedToDrag) {
+      e.preventDefault();
+    } else {
+      this.resetDelayTimeout();
+    }
+  };
 
   /**
    * Reset the drag timer and clear all events and values.
@@ -579,6 +596,10 @@ export default class GridItem extends React.Component<Props, State> {
     ) {
       document.body.style.webkitUserSelect = "";
       document.body.style.userSelect = "";
+    }
+
+    if (this.draggableCoreRef.current) {
+      this.draggableCoreRef.current.handleDragStart = this.draggableCoreRef.current.originalHandleDragStart;
     }
   };
 

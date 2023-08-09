@@ -87,7 +87,7 @@ export default class ReactGridLayout extends React.Component<Props, State> {
     draggableHandle: "",
     // TODO [>=2.0.0] Make this default duration 250ms
     // By default, this is off. Set to ~250ms for touch devices
-    dragTouchDelayDuration: 0,
+    dragTouchDelayDuration: 250,
     draggableCancel: "",
     containerPadding: null,
     rowHeight: 150,
